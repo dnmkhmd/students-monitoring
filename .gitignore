@@ -1,0 +1,16 @@
+# Backend
+Backend/venv/
+Backend/.venv/
+Backend/__pycache__/
+Backend/*.pyc
+Backend/.env
+
+# Frontend
+frontend/node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Allow run script
+!run.bat
