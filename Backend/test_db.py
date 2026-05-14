@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 
-engine = create_engine("postgresql+psycopg2://postgres:postgres@localhost:5432/Students")
+engine = create_engine("postgresql+psycopg2://postgres:postgres2026@localhost:5432/Students")
 
 try:
     with engine.connect() as conn:

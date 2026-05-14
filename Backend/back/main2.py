@@ -8,7 +8,7 @@ df = pd.read_csv(r'D:\Vs Code\Kazbek\StudentsWebApp\Data\students.csv', sep=';')
 df.columns = [c.strip().replace(' ', '_').replace('/', '_').replace('(', '').replace(')', '') for c in df.columns]
 
 # Подключение к PostgreSQL
-engine = create_engine('postgresql+psycopg2://postgres:postgres@localhost:5432/Students')
+engine = create_engine('postgresql+psycopg2://postgres:postgres2026@localhost:5432/Students')
 
 # Создание таблицы и импорт данных
 df.to_sql('students_info2', engine, if_exists='replace', index=False)

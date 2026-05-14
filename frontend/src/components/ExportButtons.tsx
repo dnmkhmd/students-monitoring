@@ -30,6 +30,20 @@ const ExportButtons: React.FC<ExportButtonsProps> = ({
     }
   };
 
+  const handleExportCSV = () => {
+    try {
+      const dataToExport = filteredStudents.length > 0 ? filteredStudents : students;
+      const filename = searchText 
+        ? `students_search_${searchText}_${new Date().toISOString().slice(0,10)}.csv`
+        : `students_${new Date().toISOString().slice(0,10)}.csv`;
+      
+      ExcelExportService.exportToCSV(dataToExport, filename);
+      message.success('Экспорт в CSV (с поддержкой кириллицы) выполнен');
+    } catch (error) {
+      message.error('Ошибка при экспорте в CSV');
+    }
+  };
+
   const handleExportPDF = () => {
     try {
       const dataToExport = filteredStudents.length > 0 ? filteredStudents : students;
@@ -73,6 +87,12 @@ const ExportButtons: React.FC<ExportButtonsProps> = ({
       label: 'Экспорт в PDF',
       icon: <FilePdfOutlined />,
       onClick: handleExportPDF,
+    },
+    {
+      key: 'csv',
+      label: 'Экспорт в CSV (для старого Excel)',
+      icon: <FileExcelOutlined />,
+      onClick: handleExportCSV,
     },
     {
       key: 'statistics',

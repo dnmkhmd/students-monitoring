@@ -12,7 +12,7 @@ df = pd.read_csv(
 df.columns = ['_'.join(filter(None, map(str, col))).strip() for col in df.columns]
 
 # Подключение к PostgreSQL
-engine = create_engine('postgresql+psycopg2://postgres:postgres@localhost:5432/Students')
+engine = create_engine('postgresql+psycopg2://postgres:postgres2026@localhost:5432/Students')
 
 # Создание таблицы и импорт данных
 df.to_sql('students_information', engine, if_exists='replace', index=False)

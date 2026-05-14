@@ -4,14 +4,14 @@ import { saveAs } from 'file-saver';
 
 export class ExcelExportService {
   /**
-   * Экспорт списка студентов в Excel
+   * Экспорт списка студентов в Excel (.xlsx)
    */
   static exportStudentsToExcel(
     students: Student[], 
     filename: string = 'students.xlsx'
   ): void {
     try {
-      // Подготовка данных для Excel
+      // Преобразование данных с понятными заголовками
       const excelData = students.map(student => ({
         'ID': student.id,
         'ФИО': student.full_name || '',
@@ -21,98 +21,71 @@ export class ExcelExportService {
         'Год выпуска': student.released || '',
         'Документ': student.document || '',
         'Продолжение обучения': student.continued_edu || '',
-        'Предприятие по спец': student.enterprise_spec || '',
-        'Предприятие не по спец': student.enterprise_non_spec || '',
+        'Предприятие (спец)': student.enterprise_spec || '',
+        'Предприятие (не спец)': student.enterprise_non_spec || '',
         'Образовательная программа': student.op || '',
         'Должность': student.position || '',
         'Грант/Контракт': student.grant_contract || '',
         'Город/Регион': student.city_region || '',
       }));
 
-      // Создание рабочей книги
+      // Создание новой рабочей книги
       const workbook = XLSX.utils.book_new();
       
-      // Создание рабочего листа
+      // Создание листа из JSON
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       
-      // Настройка ширины колонок
-      const colWidths = [
-        { wch: 5 },   // ID
-        { wch: 30 },  // ФИО
-        { wch: 12 },  // ИИН
-        { wch: 15 },  // Категория
-        { wch: 12 },  // БИН
-        { wch: 10 },  // Год выпуска
-        { wch: 15 },  // Документ
-        { wch: 20 },  // Продолжение обучения
-        { wch: 25 },  // Предприятие по спец
-        { wch: 25 },  // Предприятие не по спец
-        { wch: 30 },  // Образовательная программа
-        { wch: 20 },  // Должность
-        { wch: 15 },  // Грант/Контракт
-        { wch: 20 },  // Город/Регион
-      ];
+      // Автоматическая настройка ширины колонок (примерная)
+      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
       worksheet['!cols'] = colWidths;
       
       // Добавление листа в книгу
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Студенты');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Students Data');
       
-      // Генерация Excel файла
+      // Генерация бинарного файла (xlsx поддерживает Unicode по умолчанию)
       const excelBuffer = XLSX.write(workbook, { 
         bookType: 'xlsx', 
-        type: 'array' 
+        type: 'binary' 
       });
       
-      // Создание Blob и скачивание
-      const data = new Blob([excelBuffer], { 
+      // Преобразование в ArrayBuffer для корректного Blob
+      const s2ab = (s: string) => {
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i !== s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
+        return buf;
+      };
+
+      const data = new Blob([s2ab(excelBuffer)], { 
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
       });
+      
       saveAs(data, filename);
       
     } catch (error) {
-      console.error('Ошибка при экспорте в Excel:', error);
-      throw new Error('Не удалось экспортировать данные в Excel');
+      console.error('Excel Export Error:', error);
+      throw new Error('Не удалось экспортировать в Excel');
     }
   }
 
   /**
-   * Экспорт отчета с фильтрами
+   * Экспорт CSV с поддержкой BOM (чтобы Excel сразу понимал кириллицу)
    */
-  static exportFilteredReport(
-    students: Student[],
-    filters: Record<string, any>,
-    filename: string = 'filtered_students.xlsx'
-  ): void {
-    // Добавляем информацию о фильтрах
-    const filterInfo = {
-      'Отчет с фильтрами': '',
-      'Дата генерации': new Date().toLocaleString('ru-RU'),
-      'Всего записей': students.length,
-      'Примененные фильтры': JSON.stringify(filters, null, 2)
-    };
-
-    const workbook = XLSX.utils.book_new();
+  static exportToCSV(students: Student[], filename: string = 'students.csv'): void {
+    const headers = ['ID', 'ФИО', 'ИИН', 'Категория', 'Регион'];
+    const rows = students.map(s => [
+      s.id, 
+      s.full_name, 
+      s.iin, 
+      s.category, 
+      s.city_region
+    ].join(','));
     
-    // Лист с информацией о фильтрах
-    const infoSheet = XLSX.utils.json_to_sheet([filterInfo]);
-    XLSX.utils.book_append_sheet(workbook, infoSheet, 'Информация');
+    const csvContent = [headers.join(','), ...rows].join('\n');
     
-    // Лист с данными
-    const dataSheet = XLSX.utils.json_to_sheet(
-      students.map(student => ({
-        'ID': student.id,
-        'ФИО': student.full_name || '',
-        'ИИН': student.iin || '',
-        'Категория': student.category || '',
-        'Город/Регион': student.city_region || '',
-      }))
-    );
-    XLSX.utils.book_append_sheet(workbook, dataSheet, 'Данные');
-    
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const data = new Blob([excelBuffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
-    saveAs(data, filename);
+    // Добавляем BOM (Byte Order Mark) для UTF-8 (\uFEFF)
+    // Это критически важно для того, чтобы Excel открывал CSV с кириллицей корректно
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, filename);
   }
 }
