@@ -10,11 +10,36 @@ const api = axios.create({
   },
 });
 
+// Interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export const studentApi = {
   // Получить всех студентов
-  getAll: async (): Promise<Student[]> => {
-    const response = await api.get('/students/');
+  getAll: async (status?: string): Promise<Student[]> => {
+    const response = await api.get('/students/', { params: status ? { status } : {} });
     return response.data;
+  },
+
+  // Одобрить заявку
+  approve: async (id: number): Promise<Student> => {
+    const response = await api.post(`/students/${id}/approve`);
+    return response.data;
+  },
+
+  // Отклонить заявку
+  reject: async (id: number): Promise<void> => {
+    await api.post(`/students/${id}/reject`);
   },
 
   // Получить студента по ID

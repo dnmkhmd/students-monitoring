@@ -1,5 +1,7 @@
+// StudentForm.tsx
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select, Button } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { Student, StudentFormData, StudentUpdateData } from '../types/student';
 
 const { Option } = Select;
@@ -17,11 +19,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
   onCancel,
   initialValues,
 }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
 
   useEffect(() => {
     if (visible && initialValues) {
-      // Преобразуем null в пустые строки для формы
       const formValues: Record<string, string> = {};
       Object.entries(initialValues).forEach(([key, value]) => {
         if (key !== 'id') {
@@ -38,7 +40,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
     form
       .validateFields()
       .then((values) => {
-        // Преобразуем пустые строки обратно в null для отправки
         const processedValues: Record<string, any> = {};
         Object.entries(values).forEach(([key, value]) => {
           processedValues[key] = value === '' ? null : value;
@@ -53,17 +54,17 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
   return (
     <Modal
-      title={initialValues ? 'Редактировать студента' : 'Добавить студента'}
+      title={initialValues ? t('edit') : t('add_student')}
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
       width={700}
       footer={[
         <Button key="cancel" onClick={onCancel}>
-          Отмена
+          {t('no')}
         </Button>,
         <Button key="submit" type="primary" onClick={handleSubmit}>
-          Сохранить
+          {t('save_changes')}
         </Button>,
       ]}
     >
@@ -75,111 +76,111 @@ const StudentForm: React.FC<StudentFormProps> = ({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Form.Item
             name="full_name"
-            label="ФИО"
-            rules={[{ required: true, message: 'Введите ФИО' }]}
+            label={t('fullname')}
+            rules={[{ required: true, message: t('fullname') }]}
           >
             <Input placeholder="Иванов Иван Иванович" />
           </Form.Item>
 
           <Form.Item
             name="iin"
-            label="ИИН"
+            label={t('iin')}
           >
             <Input placeholder="123456789012" />
           </Form.Item>
 
           <Form.Item
             name="category"
-            label="Категория"
+            label={t('category')}
           >
-            <Select placeholder="Выберите категорию">
-              <Option value="">Не выбрано</Option>
-              <Option value="Бакалавр">Бакалавр</Option>
-              <Option value="Магистр">Магистр</Option>
-              <Option value="Докторант">Докторант</Option>
-              <Option value="Специалист">Специалист</Option>
+            <Select placeholder={t('category')}>
+              <Option value="">{t('not_specified')}</Option>
+              <Option value="Бакалавр">{t('bachelor')}</Option>
+              <Option value="Магистр">{t('master')}</Option>
+              <Option value="Докторант">{t('phd')}</Option>
+              <Option value="Специалист">{t('specialist')}</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="bin"
-            label="БИН"
+            label={t('bin')}
           >
             <Input placeholder="123456789" />
           </Form.Item>
 
           <Form.Item
             name="released"
-            label="Год выпуска"
+            label={t('released')}
           >
             <Input placeholder="2023" />
           </Form.Item>
 
           <Form.Item
             name="op"
-            label="Образовательная программа"
+            label={t('op')}
           >
             <Input placeholder="Программная инженерия" />
           </Form.Item>
 
           <Form.Item
             name="position"
-            label="Должность"
+            label={t('position')}
           >
             <Input placeholder="Разработчик" />
           </Form.Item>
 
           <Form.Item
             name="city_region"
-            label="Город/Регион"
+            label={t('city_region')}
           >
             <Input placeholder="Алматы" />
           </Form.Item>
 
           <Form.Item
             name="document"
-            label="Документ"
+            label={t('document')}
           >
-            <Select placeholder="Тип документа">
-              <Option value="">Не выбрано</Option>
-              <Option value="Диплом">Диплом</Option>
-              <Option value="Сертификат">Сертификат</Option>
-              <Option value="Аттестат">Аттестат</Option>
+            <Select placeholder={t('document')}>
+              <Option value="">{t('not_specified')}</Option>
+              <Option value="Диплом">{t('diploma')}</Option>
+              <Option value="Сертификат">{t('certificate')}</Option>
+              <Option value="Аттестат">{t('attestat')}</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="grant_contract"
-            label="Грант/Контракт"
+            label={t('grant_contract')}
           >
-            <Select placeholder="Тип обучения">
-              <Option value="">Не выбрано</Option>
-              <Option value="Грант">Грант</Option>
-              <Option value="Контракт">Контракт</Option>
+            <Select placeholder={t('grant_contract')}>
+              <Option value="">{t('not_specified')}</Option>
+              <Option value="Грант">{t('grant')}</Option>
+              <Option value="Контракт">{t('contract')}</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="continued_edu"
-            label="Продолжение обучения"
+            label={t('continued_edu')}
           >
-            <Select placeholder="Продолжает обучение?">
-              <Option value="">Не выбрано</Option>
-              <Option value="Да">Да</Option>
-              <Option value="Нет">Нет</Option>
+            <Select placeholder={t('continued_edu')}>
+              <Option value="">{t('not_specified')}</Option>
+              <Option value="Да">{t('yes')}</Option>
+              <Option value="Нет">{t('no')}</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="enterprise_spec"
-            label="Предприятие по спец"
+            label={t('enterprise_spec')}
           >
             <Input placeholder="IT компания" />
           </Form.Item>
 
           <Form.Item
             name="enterprise_non_spec"
-            label="Предприятие не по спец"
+            label={t('enterprise_non_spec')}
           >
             <Input placeholder="Другая компания" />
           </Form.Item>

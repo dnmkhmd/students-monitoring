@@ -1,5 +1,7 @@
+// StudentDetails.tsx
 import React from 'react';
 import { Modal, Descriptions, Tag } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { Student } from '../types/student';
 
 interface StudentDetailsProps {
@@ -9,11 +11,13 @@ interface StudentDetailsProps {
 }
 
 const StudentDetails: React.FC<StudentDetailsProps> = ({ visible, student, onClose }) => {
+  const { t } = useTranslation();
+
   if (!student) return null;
 
   return (
     <Modal
-      title="Детальная информация о студенте"
+      title={t('student_details_title')}
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -25,7 +29,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ visible, student, onClo
         <Descriptions.Item label="ИИН">{student.iin || '-'}</Descriptions.Item>
         <Descriptions.Item label="БИН">{student.bin || '-'}</Descriptions.Item>
         <Descriptions.Item label="Категория">
-          <Tag color="blue">{student.category || 'Не указано'}</Tag>
+          <Tag color="blue">{student.category || t('not_specified')}</Tag>
         </Descriptions.Item>
         <Descriptions.Item label="Документ">{student.document || '-'}</Descriptions.Item>
         <Descriptions.Item label="Год выпуска">{student.released || '-'}</Descriptions.Item>

@@ -13,6 +13,7 @@ export interface Student {
   position: string | null;
   grant_contract: string | null;
   city_region: string | null;
+  status?: string | null;
 }
 
 // Для формы все поля обязательные и не могут быть null
@@ -30,6 +31,7 @@ export interface StudentFormData {
   position: string;
   grant_contract: string;
   city_region: string;
+  status?: string;
 }
 
 // Тип для обновления - все поля опциональные
@@ -47,4 +49,5 @@ export interface StudentUpdateData {
   position?: string;
   grant_contract?: string;
   city_region?: string;
+  status?: string;
 }
