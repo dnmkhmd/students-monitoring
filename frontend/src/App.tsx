@@ -1,13 +1,22 @@
 // App.tsx
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, theme, ConfigProvider, Popover, Badge, Button, Space, Modal, App as AntdApp } from 'antd';
-import { UserOutlined, FileTextOutlined, MessageOutlined, BellOutlined, GlobalOutlined, LogoutOutlined } from '@ant-design/icons';
+import { UserOutlined, FileTextOutlined, MessageOutlined, BellOutlined, GlobalOutlined, LogoutOutlined, BarChartOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import StudentTable from './components/StudentTable';
 import LoginPage from './components/LoginPage';
+import AdminLoginPage from './components/AdminLoginPage';
 import VacanciesPage from './components/VacanciesPage';
 import FeedbackPage from './components/FeedbackPage';
 import ProfilePage from './components/ProfilePage';
+import StudentFormPage from './components/StudentFormPage';
+import StudentLayout from './components/StudentLayout';
+import StudentVacanciesPage from './components/StudentVacanciesPage';
+import AdminRequestsPage from './components/AdminRequestsPage';
+import StudentReviewsPage from './components/StudentReviewsPage';
+import AdminStatisticsPage from './components/AdminStatisticsPage';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import axios from 'axios';
 import './App.css';
 
 const { Header, Content, Sider } = Layout;
@@ -21,6 +30,7 @@ interface AppNotification {
 const App: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isStudentAuthenticated, setIsStudentAuthenticated] = useState<boolean>(false);
   const [activeMenuKey, setActiveMenuKey] = useState<string>('1');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -29,17 +39,53 @@ const App: React.FC = () => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
+  const fetchNotificationCount = async () => {
+    if (isAuthenticated) {
+      try {
+        const res = await axios.get('http://localhost:8000/admin/notifications/count', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        setUnreadCount(res.data.total);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   // Check login and load notifications
   useEffect(() => {
     const authStatus = localStorage.getItem('isLoggedIn');
     if (authStatus === 'true') {
       setIsAuthenticated(true);
     }
+    const studentAuthStatus = localStorage.getItem('isStudentLoggedIn');
+    if (studentAuthStatus === 'true') {
+      setIsStudentAuthenticated(true);
+    }
 
-    const loadedNotifications = JSON.parse(localStorage.getItem('user_notifications') || '[]');
-    setNotifications(loadedNotifications);
-    setUnreadCount(loadedNotifications.length);
-  }, [isAuthenticated]);
+    // Axios interceptor for 401 Unauthorized
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isLoggedIn');
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('userFullName');
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    fetchNotificationCount();
+    const interval = setInterval(fetchNotificationCount, 30000);
+    return () => {
+      clearInterval(interval);
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [isAuthenticated, isStudentAuthenticated]);
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
@@ -84,20 +130,34 @@ const App: React.FC = () => {
         return <FeedbackPage />;
       case '4':
         return <ProfilePage />;
+      case '5':
+        return <AdminRequestsPage />;
+      case '6':
+        return <AdminStatisticsPage />;
       default:
         return <StudentTable />;
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <ConfigProvider theme={{ token: { colorPrimary: '#10b981' } }}>
-        <AntdApp>
-          <LoginPage onLogin={handleLogin} />
-        </AntdApp>
-      </ConfigProvider>
-    );
-  }
+  const handleStudentLogin = () => {
+    setIsStudentAuthenticated(true);
+  };
+
+  const loginLayout = (
+    <ConfigProvider theme={{ token: { colorPrimary: '#10b981' } }}>
+      <AntdApp>
+        <LoginPage onLogin={handleStudentLogin} />
+      </AntdApp>
+    </ConfigProvider>
+  );
+
+  const adminLoginLayout = (
+    <ConfigProvider theme={{ token: { colorPrimary: '#10b981' } }}>
+      <AntdApp>
+        <AdminLoginPage onLogin={handleLogin} />
+      </AntdApp>
+    </ConfigProvider>
+  );
 
   // Notifications Popover Content
   const notificationContent = (
@@ -127,7 +187,7 @@ const App: React.FC = () => {
     </div>
   );
 
-  return (
+  const mainLayout = (
     <ConfigProvider
       theme={{
         token: {
@@ -173,15 +233,14 @@ const App: React.FC = () => {
               </Space>
 
               {/* Notifications Icon with Badge */}
-              <Popover content={notificationContent} trigger="click" placement="bottomRight">
-                <Badge count={unreadCount} overflowCount={9} style={{ background: '#ef4444' }}>
-                  <Button 
-                    type="text" 
-                    icon={<BellOutlined style={{ fontSize: '20px', color: 'white' }} />} 
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  />
-                </Badge>
-              </Popover>
+              <Badge count={unreadCount} overflowCount={99} style={{ background: '#ef4444' }}>
+                <Button 
+                  type="text" 
+                  icon={<BellOutlined style={{ fontSize: '20px', color: 'white' }} />} 
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => setActiveMenuKey('5')}
+                />
+              </Badge>
               
               {/* Logout Link */}
               <div 
@@ -222,6 +281,16 @@ const App: React.FC = () => {
                     icon: <UserOutlined style={{ fontSize: '16px' }} />, // Profile/Cabinet icon
                     label: t('profile'),
                   },
+                  {
+                    key: '5',
+                    icon: <FileTextOutlined style={{ fontSize: '16px' }} />,
+                    label: t('requests') || 'Student Requests',
+                  },
+                  {
+                    key: '6',
+                    icon: <BarChartOutlined style={{ fontSize: '16px' }} />,
+                    label: t('statistics'),
+                  },
                 ]}
               />
             </Sider>
@@ -243,6 +312,24 @@ const App: React.FC = () => {
         </Layout>
       </AntdApp>
     </ConfigProvider>
+  );
+
+  return (
+    <Routes>
+      <Route path="/admin-login" element={isAuthenticated ? <Navigate to="/admin" /> : adminLoginLayout} />
+      <Route path="/admin/*" element={isAuthenticated ? mainLayout : <Navigate to="/admin-login" />} />
+      
+      <Route path="/student" element={isStudentAuthenticated ? <StudentLayout /> : <Navigate to="/" />}>
+        <Route path="form" element={<StudentFormPage />} />
+        <Route path="vacancies" element={<StudentVacanciesPage />} />
+        <Route path="contact" element={<StudentContactPage />} />
+        <Route path="reviews" element={<StudentReviewsPage />} />
+        <Route index element={<Navigate to="form" />} />
+      </Route>
+      
+      <Route path="/" element={isStudentAuthenticated ? <Navigate to="/student/form" /> : loginLayout} />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 };
 

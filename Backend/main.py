@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
+from sqlalchemy import func
 
 import models
 import schemas
@@ -17,51 +18,44 @@ db = Session(bind=engine)
 # Проверяем есть ли пользователи
 if db.query(models.User).count() == 0:
     admin_user = models.User(
-        email="admin@tulekter.kz",
-        hashed_password=auth.get_password_hash("admin123"),
+        email="admin@katzu.kz",
+        hashed_password=auth.get_password_hash("adminKatzu1957-2026"),
         role="admin",
         full_name="Администратор Системы"
     )
-    viewer_user = models.User(
-        email="viewer@tulekter.kz",
-        hashed_password=auth.get_password_hash("viewer123"),
-        role="viewer",
-        full_name="Наблюдатель Студентов"
-    )
     db.add(admin_user)
-    db.add(viewer_user)
     db.commit()
 
 # Проверяем есть ли вакансии
-if db.query(models.Vacancy).count() == 0:
-    v1 = models.Vacancy(
-        title="Frontend Разработчик (React)",
-        company="Tech Solutions",
-        description="Ищем талантливого React разработчика для поддержки и развития внутренних систем мониторинга.",
-        location="Алматы",
-        salary="450 000 - 600 000 ₸",
-        contact_email="hr@techsolutions.kz"
-    )
-    v2 = models.Vacancy(
-        title="Младший Backend Разработчик (FastAPI)",
-        company="KazSoft",
-        description="Разработка API на Python, интеграция с базами данных PostgreSQL, оптимизация запросов.",
-        location="Нур-Султан (Астана)",
-        salary="300 000 - 400 000 ₸",
-        contact_email="jobs@kazsoft.kz"
-    )
-    v3 = models.Vacancy(
-        title="Специалист технической поддержки",
-        company="Telecom Services",
-        description="Консультирование клиентов, решение технических инцидентов, базовая настройка ПО.",
-        location="Караганда",
-        salary="200 000 - 250 000 ₸",
-        contact_email="support@telecom.kz"
-    )
-    db.add_all([v1, v2, v3])
-    db.commit()
+# if db.query(models.Vacancy).count() == 0:
+#     v1 = models.Vacancy(
+#         title="Frontend Разработчик (React)",
+#         company="Tech Solutions",
+#         description="Ищем талантливого React разработчика для поддержки и развития внутренних систем мониторинга.",
+#         location="Алматы",
+#         salary="450 000 - 600 000 ₸",
+#         contact_email="hr@techsolutions.kz"
+#     )
+#     v2 = models.Vacancy(
+#         title="Младший Backend Разработчик (FastAPI)",
+#         company="KazSoft",
+#         description="Разработка API на Python, интеграция с базами данных PostgreSQL, оптимизация запросов.",
+#         location="Нур-Султан (Астана)",
+#         salary="300 000 - 400 000 ₸",
+#         contact_email="jobs@kazsoft.kz"
+#     )
+#     v3 = models.Vacancy(
+#         title="Специалист технической поддержки",
+#         company="Telecom Services",
+#         description="Консультирование клиентов, решение технических инцидентов, базовая настройка ПО.",
+#         location="Караганда",
+#         salary="200 000 - 250 000 ₸",
+#         contact_email="support@telecom.kz"
+#     )
+#     db.add_all([v1, v2, v3])
+#     db.commit()
 
-db.close()
+# db.close()
 
 
 app = FastAPI(
@@ -248,27 +242,7 @@ def get_students_count(db: Session = Depends(get_db)):
 
 # ================= AUTHENTICATION ENDPOINTS =================
 
-@app.post("/register", response_model=schemas.User, tags=["Auth"])
-def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Check if email exists
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Электронная почта уже зарегистрирована"
-        )
-    
-    hashed_pwd = auth.get_password_hash(user.password)
-    new_user = models.User(
-        email=user.email,
-        hashed_password=hashed_pwd,
-        role=user.role or "viewer",
-        full_name=user.full_name
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+
 
 @app.post("/login", response_model=schemas.Token, tags=["Auth"])
 def login_user(user_data: schemas.UserLogin, db: Session = Depends(get_db)):
@@ -353,3 +327,214 @@ def get_feedbacks(
     admin: models.User = Depends(auth.get_admin_user) # Only admins can view feedbacks
 ):
     return db.query(models.Feedback).all()
+
+@app.put("/feedbacks/{feedback_id}/read", response_model=schemas.Feedback, tags=["Feedback"])
+def read_feedback(
+    feedback_id: int, 
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    feedback.is_read = True
+    db.commit()
+    db.refresh(feedback)
+    return feedback
+
+# ================= VACANCY APPLICATIONS ENDPOINTS =================
+
+@app.post("/vacancies/{vacancy_id}/apply", response_model=schemas.VacancyApplication, tags=["Vacancy Applications"])
+def apply_to_vacancy(
+    vacancy_id: int,
+    application: schemas.VacancyApplicationCreate,
+    db: Session = Depends(get_db)
+):
+    vacancy = db.query(models.Vacancy).filter(models.Vacancy.id == vacancy_id).first()
+    if not vacancy:
+        raise HTTPException(status_code=404, detail="Vacancy not found")
+        
+    db_app = models.VacancyApplication(
+        student_name=application.student_name,
+        student_email=application.student_email,
+        vacancy_id=vacancy_id,
+        message=application.message,
+        status="pending",
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    db.add(db_app)
+    db.commit()
+    db.refresh(db_app)
+    return db_app
+
+@app.get("/vacancies/applications", response_model=List[schemas.VacancyApplication], tags=["Vacancy Applications"])
+def get_vacancy_applications(
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    return db.query(models.VacancyApplication).all()
+
+@app.put("/vacancies/applications/{application_id}/approve", response_model=schemas.VacancyApplication, tags=["Vacancy Applications"])
+def approve_vacancy_application(
+    application_id: int,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    app = db.query(models.VacancyApplication).filter(models.VacancyApplication.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    app.status = "approved"
+    db.commit()
+    db.refresh(app)
+    return app
+
+@app.put("/vacancies/applications/{application_id}/reject", response_model=schemas.VacancyApplication, tags=["Vacancy Applications"])
+def reject_vacancy_application(
+    application_id: int,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    app = db.query(models.VacancyApplication).filter(models.VacancyApplication.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    app.status = "rejected"
+    db.commit()
+    db.refresh(app)
+    return app
+
+# ================= NOTIFICATIONS ENDPOINTS =================
+
+@app.get("/admin/notifications/count", tags=["Notifications"])
+def get_notifications_count(
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    pending_students = db.query(models.StudentsInformation).filter(models.StudentsInformation.status == "pending").count()
+    new_applications = db.query(models.VacancyApplication).filter(models.VacancyApplication.status == "pending").count()
+    unread_feedbacks = db.query(models.Feedback).filter(models.Feedback.is_read == False).count()
+    
+    total = pending_students + new_applications + unread_feedbacks
+    
+    return {
+        "pending_students": pending_students,
+        "new_applications": new_applications,
+        "unread_feedbacks": unread_feedbacks,
+        "total": total
+    }
+
+# ================= REVIEWS ENDPOINTS =================
+
+@app.post("/reviews/", response_model=schemas.Review, tags=["Reviews"])
+def create_review(review: schemas.ReviewCreate, db: Session = Depends(get_db)):
+    db_review = models.Review(
+        first_name=review.first_name,
+        last_name=review.last_name,
+        group_name=review.group_name,
+        specialty=review.specialty,
+        message=review.message,
+        rating=review.rating,
+        created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    db.add(db_review)
+    db.commit()
+    db.refresh(db_review)
+    return db_review
+
+@app.get("/reviews/", response_model=List[schemas.Review], tags=["Reviews"])
+def get_reviews(db: Session = Depends(get_db)):
+    return db.query(models.Review).order_by(models.Review.id.desc()).all()
+
+@app.get("/statistics/summary", tags=["Statistics"])
+def get_statistics_summary(db: Session = Depends(get_db), current_user: schemas.User = Depends(auth.get_current_user)):
+    total = db.query(models.StudentsInformation).count()
+    pending = db.query(models.StudentsInformation).filter(models.StudentsInformation.status == "pending").count()
+    
+    # Employed: status == 'approved' and position is not null, not empty, not 'Не работает'
+    employed = db.query(models.StudentsInformation).filter(
+        models.StudentsInformation.status == "approved",
+        models.StudentsInformation.position != None,
+        models.StudentsInformation.position != "",
+        models.StudentsInformation.position != "Не работает"
+    ).count()
+    
+    employment_rate = (employed / total * 100) if total > 0 else 0.0
+    
+    return {
+        "total": total,
+        "employed": employed,
+        "pending": pending,
+        "employment_rate": round(employment_rate, 2)
+    }
+
+@app.get("/statistics/by-region", tags=["Statistics"])
+def get_statistics_by_region(db: Session = Depends(get_db), current_user: schemas.User = Depends(auth.get_current_user)):
+    results = db.query(
+        models.StudentsInformation.city_region.label('region'),
+        func.count(models.StudentsInformation.id).label('count')
+    ).filter(
+        models.StudentsInformation.status == "approved",
+        models.StudentsInformation.city_region != None,
+        models.StudentsInformation.city_region != ""
+    ).group_by(
+        models.StudentsInformation.city_region
+    ).order_by(
+        func.count(models.StudentsInformation.id).desc()
+    ).limit(10).all()
+    
+    return [{"region": r.region, "count": r.count} for r in results]
+
+@app.get("/statistics/by-specialty", tags=["Statistics"])
+def get_statistics_by_specialty(db: Session = Depends(get_db), current_user: schemas.User = Depends(auth.get_current_user)):
+    results = db.query(
+        models.StudentsInformation.op.label('specialty'),
+        func.count(models.StudentsInformation.id).label('count')
+    ).filter(
+        models.StudentsInformation.status == "approved",
+        models.StudentsInformation.op != None,
+        models.StudentsInformation.op != ""
+    ).group_by(
+        models.StudentsInformation.op
+    ).order_by(
+        func.count(models.StudentsInformation.id).desc()
+    ).limit(8).all()
+    
+    return [{"specialty": r.specialty, "count": r.count} for r in results]
+
+@app.get("/statistics/by-year", tags=["Statistics"])
+def get_statistics_by_year(db: Session = Depends(get_db), current_user: schemas.User = Depends(auth.get_current_user)):
+    total_results = db.query(
+        models.StudentsInformation.released.label('year'),
+        func.count(models.StudentsInformation.id).label('total')
+    ).filter(
+        models.StudentsInformation.released != None,
+        models.StudentsInformation.released != ""
+    ).group_by(
+        models.StudentsInformation.released
+    ).all()
+    
+    employed_results = db.query(
+        models.StudentsInformation.released.label('year'),
+        func.count(models.StudentsInformation.id).label('employed')
+    ).filter(
+        models.StudentsInformation.status == "approved",
+        models.StudentsInformation.position != None,
+        models.StudentsInformation.position != "",
+        models.StudentsInformation.position != "Не работает",
+        models.StudentsInformation.released != None,
+        models.StudentsInformation.released != ""
+    ).group_by(
+        models.StudentsInformation.released
+    ).all()
+    
+    stats_map = {}
+    for r in total_results:
+        stats_map[r.year] = {"year": r.year, "total": r.total, "employed": 0}
+        
+    for r in employed_results:
+        if r.year in stats_map:
+            stats_map[r.year]["employed"] = r.employed
+        else:
+            stats_map[r.year] = {"year": r.year, "total": 0, "employed": r.employed}
+            
+    sorted_stats = sorted(stats_map.values(), key=lambda x: x["year"])
+    return sorted_stats

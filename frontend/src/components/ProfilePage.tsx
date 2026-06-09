@@ -1,6 +1,6 @@
 // ProfilePage.tsx
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Tag, message, Avatar, Typography, Divider } from 'antd';
+import { Card, Form, Input, Button, Tag, message, Avatar, Typography, Divider, Modal } from 'antd';
 import { User, Mail, Shield, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
@@ -12,6 +12,11 @@ const ProfilePage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
+
+  const userRole = localStorage.getItem('userRole') || 'viewer';
+  const [isPinVerified, setIsPinVerified] = useState(userRole === 'admin');
+  const [pinModalVisible, setPinModalVisible] = useState(userRole !== 'admin');
+  const [pinCode, setPinCode] = useState('');
 
   const token = localStorage.getItem('token');
 
@@ -34,8 +39,10 @@ const ProfilePage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (isPinVerified) {
+      fetchProfile();
+    }
+  }, [isPinVerified]);
 
   const handleUpdateProfile = async (values: any) => {
     try {
@@ -57,6 +64,47 @@ const ProfilePage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handlePinSubmit = () => {
+    if (pinCode === '1957') {
+      setIsPinVerified(true);
+      setPinModalVisible(false);
+    } else {
+      message.error('Invalid code');
+    }
+  };
+
+  const handlePinCancel = () => {
+    setPinModalVisible(false);
+  };
+
+  if (!isPinVerified) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
+        <Modal
+          title="PIN Code Required"
+          open={pinModalVisible}
+          onOk={handlePinSubmit}
+          onCancel={handlePinCancel}
+          okText="Confirm"
+          cancelText="Cancel"
+        >
+          <p>Please enter the PIN code to access the profile page:</p>
+          <Input.Password
+            value={pinCode}
+            onChange={(e) => setPinCode(e.target.value)}
+            placeholder="Enter PIN code"
+            onPressEnter={handlePinSubmit}
+          />
+        </Modal>
+        {!pinModalVisible && (
+          <Button onClick={() => setPinModalVisible(true)} type="primary" style={{ background: '#10b981', borderColor: '#10b981' }}>
+            Enter PIN Code
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   if (!profileData) {
     return (

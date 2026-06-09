@@ -1,29 +1,60 @@
 import React, { useState } from 'react';
 import { Input, Button, message, Space } from 'antd';
-import { LockOutlined, GlobalOutlined } from '@ant-design/icons';
+import { LockOutlined, MailOutlined, GlobalOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-interface LoginPageProps {
-  onLogin?: () => void;
+interface AdminLoginPageProps {
+  onLogin: (success: boolean) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLogin }) => {
   const { t, i18n } = useTranslation();
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
   };
 
-  const handleEnter = () => {
-    if (pin === '1957') {
-      localStorage.setItem('isStudentLoggedIn', 'true');
-      if (onLogin) onLogin();
-      navigate('/student/form');
-    } else {
-      message.error(i18n.language === 'en' ? 'Invalid code' : 'Неверный код');
+  const handleAuth = async () => {
+    if (!email || !password) {
+      message.error(i18n.language === 'en' ? 'Please fill in all fields' : 'Пожалуйста, заполните все поля');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await axios.post('http://localhost:8000/login', {
+        email,
+        password
+      });
+      const { access_token, role: userRole, email: userEmail, full_name } = response.data;
+      
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userRole', userRole);
+      localStorage.setItem('userEmail', userEmail);
+      localStorage.setItem('userFullName', full_name);
+      
+      const welcomeNotif = {
+        id: Date.now(),
+        message: t('notif_welcome'),
+        date: new Date().toLocaleTimeString()
+      };
+      localStorage.setItem('user_notifications', JSON.stringify([welcomeNotif]));
+
+      message.success(i18n.language === 'en' ? 'Welcome!' : 'Добро пожаловать!');
+      onLogin(true);
+      navigate('/admin'); // Go to dashboard
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.detail || (i18n.language === 'en' ? 'Authentication error' : 'Ошибка авторизации');
+      message.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,6 +72,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       left: 0,
       zIndex: 1000
     }}>
+      <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 1001 }}>
+        <Button 
+          type="text" 
+          icon={<ArrowLeftOutlined style={{ color: 'white' }} />} 
+          onClick={() => navigate('/')}
+          style={{ color: 'white' }}
+        >
+          {t('back')}
+        </Button>
+      </div>
+
       <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 1001 }}>
         <Space style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
           <GlobalOutlined style={{ color: 'white' }} />
@@ -68,39 +110,38 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         animation: 'fadeInUp 1s ease-out'
       }}>
         <h2 style={{ color: 'white', marginBottom: '24px', fontWeight: 300, letterSpacing: '1px' }}>
-          {t('enter_access_code')}
+          {t('auth_title')}
         </h2>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+          <Input
+            placeholder={t('email_placeholder')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            prefix={<MailOutlined style={{ color: 'rgba(255,255,255,0.7)' }} />}
+            style={{ height: '45px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: '15px' }}
+            className="login-input"
+          />
+
           <Input.Password
-            placeholder={t('pin_code')}
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
+            placeholder={t('password_placeholder')}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             prefix={<LockOutlined style={{ color: 'rgba(255,255,255,0.7)' }} />}
             style={{ height: '45px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: '15px' }}
             className="login-input"
-            onPressEnter={handleEnter}
+            onPressEnter={handleAuth}
           />
           
           <Button 
             type="primary" 
-            onClick={handleEnter}
-            style={{ width: '100%', height: '45px', borderRadius: '12px', background: '#10b981', border: 'none', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)' }}
+            onClick={handleAuth} 
+            loading={loading}
+            style={{ width: '100%', height: '45px', borderRadius: '12px', background: '#10b981', border: 'none', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)', marginTop: '10px' }}
           >
-            {t('enter_btn').toUpperCase()}
+            {t('login').toUpperCase()}
           </Button>
         </div>
-      </div>
-
-      <div style={{ position: 'absolute', bottom: '30px' }}>
-        <span 
-          onClick={() => navigate('/admin-login')} 
-          style={{ color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', transition: 'all 0.3s' }}
-          onMouseOver={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.9)'}
-          onMouseOut={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
-        >
-          {t('admin_login_link')}
-        </span>
       </div>
 
       <style>{`
@@ -115,4 +156,4 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   );
 };
 
-export default LoginPage;
+export default AdminLoginPage;

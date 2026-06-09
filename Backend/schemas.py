@@ -15,7 +15,7 @@ class StudentsInformationBase(BaseModel):
     position: Optional[str] = None
     grant_contract: Optional[str] = None
     city_region: Optional[str] = None
-    status: Optional[str] = "approved"
+    status: Optional[str] = "pending"
     
     # Валидатор для конвертации iin в строку
     @field_validator('iin', mode='before')
@@ -90,6 +90,44 @@ class FeedbackCreate(FeedbackBase):
 class Feedback(FeedbackBase):
     id: int
     user_id: Optional[int] = None
+    created_at: str
+    is_read: bool
+
+    class Config:
+        from_attributes = True
+
+# Vacancy Application Schemas
+class VacancyApplicationBase(BaseModel):
+    student_name: str
+    student_email: str
+    vacancy_id: int
+    message: Optional[str] = None
+    status: Optional[str] = "pending"
+
+class VacancyApplicationCreate(VacancyApplicationBase):
+    pass
+
+class VacancyApplication(VacancyApplicationBase):
+    id: int
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+# Review Schemas
+class ReviewBase(BaseModel):
+    first_name: str
+    last_name: Optional[str] = None
+    group_name: Optional[str] = None
+    specialty: Optional[str] = None
+    message: str
+    rating: Optional[int] = None
+
+class ReviewCreate(ReviewBase):
+    pass
+
+class Review(ReviewBase):
+    id: int
     created_at: str
 
     class Config:

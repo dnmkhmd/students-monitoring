@@ -79,6 +79,18 @@ const StudentTable: React.FC = () => {
       dataIndex: 'released',
       key: 'released',
       render: (text: string | null) => text || '-',
+      filters: [
+        { text: '2021', value: '2021' },
+        { text: '2022', value: '2022' },
+        { text: '2023', value: '2023' },
+        { text: '2024', value: '2024' },
+        { text: '2025', value: '2025' },
+        { text: '2022-2023', value: '2022-2023' },
+        { text: '2023-2024', value: '2023-2024' },
+        { text: '2024-2025', value: '2024-2025' },
+      ],
+      onFilter: (value: React.Key | boolean, record) => 
+        (record.released || '').includes(String(value)),
       sorter: (a, b) => (a.released || '').localeCompare(b.released || ''),
     },
     {
